@@ -1,7 +1,7 @@
 CC := clang
 CFLAGS := -Wall -Wextra -Werror -Wpedantic -std=c11 -g
 
-TARGET := linked_list
+TARGET := linked_list.out
 SRC := linked_list.c
 
 all: $(TARGET)

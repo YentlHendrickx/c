@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct Node {
 	int data;
@@ -29,7 +30,32 @@ struct Node* deleteFirst(struct Node* head) {
 }
 
 struct Node* deleteAt(struct Node* head, int pos) {
+	if (head == NULL) {
+		return NULL;
+	}
 
+	struct Node* current = head;
+	int currentPos = 0;
+	while (current->next != NULL && ++currentPos < pos-1) {
+		current = current->next;
+	}
+
+	// Remove this element, we need to relink
+	struct Node* target = current->next;
+	if (target == NULL) {
+		return NULL;
+	}
+
+	struct Node* targetNext = target->next;
+	if (targetNext == NULL) {
+		// In this case, we just pop the element, clear our head pointer and free mem
+		current->next = NULL;
+		free(target);
+	} else {
+		// On this case, remove the element, set pointer of previous to correct
+		current->next = targetNext;
+		free(target);
+	}
 
 	return head;
 }
@@ -109,6 +135,7 @@ int main(void) {
 	insertAt(head, 5, 3);
 	head = deleteFirst(head);
 	deleteLast(head);
+	deleteAt(head, 1);
 
 	// Traverse the list and printf
 	struct Node* current = head;
