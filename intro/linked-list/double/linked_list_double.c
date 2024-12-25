@@ -1,16 +1,58 @@
+/**
+* Current supported operations:
+* Create:
+* - first
+* - last
+* - at index
+*
+* Delete:
+* - first
+* - last
+* - at index
+*
+* Searching
+* Length
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 struct Node {
 	int data;
 	struct Node* next;
+	struct Node* prev;
 };
+
+int len(struct Node* head) {
+	int length = 0;
+
+	struct Node* curr = head;
+	while (curr != NULL) {
+		length++;
+		curr = curr->next;
+	}
+
+	return length;
+}
+
+bool searchList(struct Node* head, int target) {
+	while (head != NULL) {
+		if (head->data == target) {
+			return true;
+		}
+
+		head = head->next;
+	}
+
+	return false;
+}
 
 struct Node* createNode(int data) {
 	struct Node* new = (struct Node*)malloc(sizeof(struct Node));
 	new->data = data;
 	new->next = NULL;
+	new->prev = NULL;
 	return new;
 }
 
@@ -22,6 +64,7 @@ struct Node* deleteFirst(struct Node* head) {
 
 	struct Node* temp = head;
 	head = temp->next;
+	head->prev = NULL;
 
 	// This is why C is so dangerous right here
 	free(temp);
@@ -54,6 +97,7 @@ struct Node* deleteAt(struct Node* head, int pos) {
 	} else {
 		// On this case, remove the element, set pointer of previous to correct
 		current->next = targetNext;
+		targetNext->prev = current;
 		free(target);
 	}
 
@@ -81,6 +125,7 @@ struct Node* deleteLast(struct Node* head) {
 struct Node* insertBeginning(struct Node* head, int data) {
 	struct Node* new = createNode(data);
 	new->next = head;
+	head->prev = new;
 	return new;
 }
 
@@ -102,11 +147,13 @@ struct Node* insertAt(struct Node* head, int data, int position) {
 	struct Node* next = current->next;
 	if (next == NULL) {
 		current->next = new;
+		new->prev = current;
 		return head;
 	}
 
 	new->next = next;
 	current->next = new;
+	new->prev = current;
 	return head;
 }
 
@@ -123,6 +170,7 @@ struct Node* insertEnd(struct Node* head, int data) {
 	}
 
 	current->next = new;
+	new->prev = current;
 	return head;
 }
 
@@ -143,6 +191,9 @@ int main(void) {
 		printf("%d", current->data);
 		current = current->next;
 	}
+
+	printf("\nExisting 1? %d", searchList(head, 1));
+	printf("\nExisting 2? %d", searchList(head, 2));
 
 	printf("\n");
 
