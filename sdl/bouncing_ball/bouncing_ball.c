@@ -148,7 +148,8 @@ void addTrail(struct TrailManager *manager, struct Circle *circle) {
 
 void drawTrail(SDL_Surface *layer, struct TrailCircle *trail, int length) {
   for (int i = 0; i < length; i++) {
-    SDL_Color trailColor = {255, 0, 0, 255 - (i * 20)};
+    int alpha = 255 - (i * 20);
+    SDL_Color trailColor = {alpha, alpha, 0, 255};
     struct Circle temp = {(int)trail[i].x, (int)trail[i].y, trail[i].r, 0, 0};
     drawCircle(layer, &temp, trailColor);
   }
