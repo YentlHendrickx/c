@@ -5,6 +5,7 @@
 #include <SDL2/SDL_surface.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 // I don't like it being odd, but it's easier to contain
 const int SCREEN_WIDTH = 1601;
@@ -295,6 +296,12 @@ int main(void) {
   int speedDef = 1000;
   int speedDivisor = 100;
   int toggleColor = 0;
+
+  int generationCounter = 0;
+  int lastGeneration = 0;
+
+  time_t startTime = time(NULL);
+
   while (!exitTrigger) {
     while (SDL_PollEvent(&e)) {
       if (e.type == SDL_QUIT) {
@@ -362,7 +369,15 @@ int main(void) {
       break;
 
     if (!pause) {
+      // Print generations per second
+      if (time(NULL) - startTime >= 1) {
+        printf("Generation: %d, Generations per second: %d\n",
+               generationCounter, generationCounter - lastGeneration);
+        lastGeneration = generationCounter;
+        startTime = time(NULL);
+      }
       nextCells = nextGeneration(cells, rows, cols);
+      generationCounter++;
       for (int i = 0; i < rows * cols; i++) {
         cells[i] = nextCells[i];
       }
@@ -375,7 +390,7 @@ int main(void) {
     if (pause) {
       SDL_Delay(1000 / 120);
     } else {
-      SDL_Delay(speedDef / speedDivisor);
+      SDL_Delay(0);
     }
   }
 
