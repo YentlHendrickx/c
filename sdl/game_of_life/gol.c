@@ -7,15 +7,15 @@
 #include <stdlib.h>
 
 // I don't like it being odd, but it's easier to contain
-const int SCREEN_WIDTH = 1501;
-const int SCREEN_HEIGHT = 1201;
-const int CELL_SIZE = 10;
+const int SCREEN_WIDTH = 1601;
+const int SCREEN_HEIGHT = 1301;
+// Should be at least 2, we -1 to make borders possible
+const int CELL_SIZE = 2;
 
 struct Cell {
   int x;
   int y;
   int state;
-  struct Cell *neighbors[8];
   SDL_Color color;
 };
 
@@ -78,6 +78,33 @@ void drawCells(SDL_Surface *screen, struct Cell *cells, int toggleColor) {
   }
 }
 
+struct Cell *getNeighbors(struct Cell *cells, int y, int x, int rows,
+                          int cols) {
+  int neighbors[8][2] = {
+      {y - 1, x - 1}, {y - 1, x},     {y - 1, x + 1}, {y, x - 1},
+      {y, x + 1},     {y + 1, x - 1}, {y + 1, x},     {y + 1, x + 1},
+  };
+
+  struct Cell *nCells = malloc(8 * sizeof(struct Cell));
+  for (int i = 0; i < 8; i++) {
+    nCells[i].state = -1;
+  }
+
+  for (int i = 0; i < 8; i++) {
+    int neighborY = neighbors[i][0];
+    int neighborX = neighbors[i][1];
+
+    if (neighborY < 0 || neighborY >= rows || neighborX < 0 ||
+        neighborX >= cols)
+      continue;
+
+    int neighbor = neighborY * cols + neighborX;
+    nCells[i] = cells[neighbor];
+  }
+
+  return nCells;
+}
+
 void toggleCellState(struct Cell *cells, int x, int y) {
   int cols = SCREEN_WIDTH / CELL_SIZE;
 
@@ -88,23 +115,25 @@ void toggleCellState(struct Cell *cells, int x, int y) {
   cells[index].state = !cells[index].state;
 }
 
-void showNeighbors(struct Cell *cells, int x, int y) {
-  int cols = SCREEN_WIDTH / CELL_SIZE;
-
-  // Get the cell
+void showNeighbors(struct Cell *cells, int x, int y, int rows, int cols) {
   int cellX = x / CELL_SIZE;
   int cellY = y / CELL_SIZE;
 
   int index = cellY * cols + cellX;
   struct Cell *cell = &cells[index];
 
+  struct Cell *neighbors = getNeighbors(cells, cell->y, cell->x, rows, cols);
+
   for (int i = 0; i < 8; i++) {
-    if (cell->neighbors[i] == NULL) {
+    if (neighbors[i].state == -1) {
       continue;
     }
 
-    cell->neighbors[i]->state = 3;
+    index = neighbors[i].y * cols + neighbors[i].x;
+    cells[index].state = 3;
   }
+
+  free(neighbors);
 }
 
 void clearCells(struct Cell *cells) {
@@ -119,16 +148,21 @@ void clearCells(struct Cell *cells) {
   }
 }
 
-int nextCellState(struct Cell *cell) {
+int nextCellState(struct Cell *cell, struct Cell *cells) {
   int aliveNeighbors = 0;
+  struct Cell *neighbors =
+      getNeighbors(cells, cell->y, cell->x, SCREEN_HEIGHT / CELL_SIZE,
+                   SCREEN_WIDTH / CELL_SIZE);
   for (int i = 0; i < 8; i++) {
-    if (cell->neighbors[i] == NULL) {
+    if (neighbors[i].state == -1) {
       continue;
     }
 
-    if (cell->neighbors[i]->state)
+    if (neighbors[i].state)
       aliveNeighbors++;
   }
+
+  free(neighbors);
 
   if (cell->state) {
     if (aliveNeighbors < 2 || aliveNeighbors > 3)
@@ -141,47 +175,16 @@ int nextCellState(struct Cell *cell) {
   return cell->state;
 }
 
-struct Cell *getCellsToCheck(struct Cell *cells, int rows, int x, int y) {
-  // Return the current cells index, and all its neighbors so we can check them
-  struct Cell *cellsToCheck = malloc(8 * sizeof(struct Cell));
-  struct Cell *currentCell = &cells[y * rows + x];
-
-  for (int i = 0; i < 8; i++) {
-    if (currentCell->neighbors[i] == NULL) {
-      cellsToCheck[i].state = -1;
-      continue;
-    }
-
-    cellsToCheck[i] = *currentCell->neighbors[i];
-  }
-
-  return cellsToCheck;
-}
-
-int inCheckSet(struct Cell *cells, struct Cell *cell, int rows, int cols) {
-  for (int i = 0; i < rows * cols; i++) {
-    if (cells[i].state == -1) {
-      return 0;
-    }
-
-    if (cells[i].x == cell->x && cells[i].y == cell->y) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
 struct Cell *nextGeneration(struct Cell *cells, int rows, int cols) {
   // Make a copy of the cells, so we can update them all at once -> otherwise
   // invalidates the neighbors
   struct Cell *nextGen = malloc(rows * cols * sizeof(struct Cell));
   struct Cell *cellsToCheck = malloc(rows * cols * sizeof(struct Cell));
+
   // Initialize cells to check to have state -1
   for (int i = 0; i < rows * cols; i++) {
     cellsToCheck[i].state = -1;
   }
-  int currentIndex = 0;
 
   for (int i = 0; i < rows; i++) {
     for (int j = 0; j < cols; j++) {
@@ -192,13 +195,12 @@ struct Cell *nextGeneration(struct Cell *cells, int rows, int cols) {
         continue;
       }
 
-      if (!inCheckSet(cellsToCheck, &cells[index], rows, cols)) {
-        cellsToCheck[currentIndex] = cells[index];
-        currentIndex++;
+      if (cells[index].state == 1) {
+        cellsToCheck[index] = cells[index];
       }
 
       struct Cell *neighbors =
-          getCellsToCheck(cells, cols, cells[index].x, cells[index].y);
+          getNeighbors(cells, cells[index].y, cells[index].x, rows, cols);
 
       for (int j = 0; j < 8; j++) {
         // Skip NULL neighbors
@@ -206,46 +208,30 @@ struct Cell *nextGeneration(struct Cell *cells, int rows, int cols) {
           continue;
         }
 
+        int neighborIndex = neighbors[j].y * cols + neighbors[j].x;
+
         // Check if neighbor is already in the list
-        if (inCheckSet(cellsToCheck, &neighbors[j], rows, cols) == 1) {
+        if (cellsToCheck[neighborIndex].state != -1) {
           continue;
         }
 
-        cellsToCheck[currentIndex] = neighbors[j];
-        currentIndex++;
+        cellsToCheck[neighborIndex] = neighbors[j];
       }
     }
   }
 
-  for (int i = 0; i < currentIndex; i++) {
-    int nextState = nextCellState(&cellsToCheck[i]);
+  for (int i = 0; i < (cols * rows) - 1; i++) {
+    if (cellsToCheck[i].state == -1) {
+      continue;
+    }
+
+    int nextState = nextCellState(&cellsToCheck[i], cells);
     int index = cellsToCheck[i].y * cols + cellsToCheck[i].x;
     nextGen[index].state = nextState;
   }
 
   free(cellsToCheck);
   return nextGen;
-}
-
-void setNeighbors(struct Cell *cells, int y, int x, int rows, int cols) {
-  int neighbors[8][2] = {
-      {y - 1, x - 1}, {y - 1, x},     {y - 1, x + 1}, {y, x - 1},
-      {y, x + 1},     {y + 1, x - 1}, {y + 1, x},     {y + 1, x + 1},
-  };
-
-  int current = y * cols + x;
-
-  for (int i = 0; i < 8; i++) {
-    int neighborY = neighbors[i][0];
-    int neighborX = neighbors[i][1];
-
-    if (neighborY < 0 || neighborY >= rows || neighborX < 0 ||
-        neighborX >= cols)
-      continue;
-
-    int neighbor = neighborY * cols + neighborX;
-    cells[current].neighbors[i] = &cells[neighbor];
-  }
 }
 
 void randomizeCells(struct Cell *cells, int rows, int cols) {
@@ -261,18 +247,16 @@ void randomizeCells(struct Cell *cells, int rows, int cols) {
 }
 
 void initializeCells(struct Cell *cells, int rows, int cols) {
-  for (int i = 0; i < rows; i++) {
-    for (int j = 0; j < cols; j++) {
-      setNeighbors(cells, i, j, rows, cols);
-      cells[i * cols + j].x = j;
-      cells[i * cols + j].y = i;
+  for (int y = 0; y < rows; y++) {
+    for (int x = 0; x < cols; x++) {
+      cells[y * cols + x].x = x;
+      cells[y * cols + x].y = y;
 
       int r = rand() % 2 == 0 ? 0 : 255;
       int g = rand() % 2 == 0 ? 0 : 255;
       int b = rand() % 2 == 0 ? 0 : 255;
 
-      cells[i * cols + j].color = (SDL_Color){r, g, b, 1};
-      /* cells[i * cols + j].color = (SDL_Color){255, 255, 255, 1}; */
+      cells[y * cols + x].color = (SDL_Color){r, g, b, 1};
     }
   }
 }
@@ -369,7 +353,7 @@ int main(void) {
         if (e.button.button == SDL_BUTTON_LEFT) {
           toggleCellState(cells, e.button.x, e.button.y);
         } else if (e.button.button == SDL_BUTTON_RIGHT) {
-          showNeighbors(cells, e.button.x, e.button.y);
+          showNeighbors(cells, e.button.x, e.button.y, rows, cols);
         }
       }
     }
