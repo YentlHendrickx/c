@@ -1,73 +1,71 @@
-// LIFO stack implementation
 #include <limits.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+// LIFO stack implementation
 struct Stack {
-	int ptr;
-	unsigned capacity;
-	int* array;
+  int ptr;
+  unsigned capacity;
+  int *array;
 };
 
-struct Stack* create(unsigned capacity) {
-	struct Stack* stack = (struct Stack*)malloc(sizeof(struct Stack));
+struct Stack *create(unsigned capacity) {
+  struct Stack *stack = (struct Stack *)malloc(sizeof(struct Stack));
 
-	stack->capacity = capacity;
-	stack->ptr = -1;
-	stack->array = (int*)malloc(capacity * sizeof(int));
+  stack->capacity = capacity;
+  stack->ptr = -1;
+  stack->array = (int *)malloc(capacity * sizeof(int));
 
-	return stack;
+  return stack;
 }
 
-int isFull(struct Stack* stack) {
-	return stack->ptr == (int) stack->capacity-1;
+int isFull(struct Stack *stack) {
+  return stack->ptr == (int)stack->capacity - 1;
 }
 
-int isEmpty(struct Stack* stack) {
-	return stack->ptr == -1;
+int isEmpty(struct Stack *stack) { return stack->ptr == -1; }
+
+void push(struct Stack *stack, int val) {
+  if (isFull(stack)) {
+    return;
+  }
+
+  stack->array[++stack->ptr] = val;
 }
 
-void push(struct Stack* stack, int val) {
-	if (isFull(stack)) {
-		return;
-	}
+int pop(struct Stack *stack) {
+  if (isEmpty(stack)) {
+    return INT_MIN;
+  }
 
-	stack->array[++stack->ptr] = val;
+  return stack->array[stack->ptr--];
 }
 
-int pop(struct Stack* stack) {
-	if (isEmpty(stack)) {
-		return INT_MIN;
-	}
+int top(struct Stack *stack) {
+  if (isEmpty(stack)) {
+    return INT_MIN;
+  }
 
-	return stack->array[stack->ptr--];
-}
-
-int top(struct Stack* stack) {
-	if (isEmpty(stack)) {
-		return INT_MIN;
-	}
-
-	return stack->array[stack->ptr];
+  return stack->array[stack->ptr];
 }
 
 int main(void) {
-	struct Stack* stack = create(5);
-	push(stack, 10);
-	printf("Top is %d", top(stack));
-	push(stack, 12);
-	printf("\nTop is %d", top(stack));
-	push(stack, 5);
-	printf("\nTop is %d", top(stack));
-	push(stack, 100);
-	printf("\nTop is %d", top(stack));
-	push(stack, 44);
-	printf("\nTop is %d\n", top(stack));
+  struct Stack *stack = create(5);
+  push(stack, 10);
+  printf("Top is %d", top(stack));
+  push(stack, 12);
+  printf("\nTop is %d", top(stack));
+  push(stack, 5);
+  printf("\nTop is %d", top(stack));
+  push(stack, 100);
+  printf("\nTop is %d", top(stack));
+  push(stack, 44);
+  printf("\nTop is %d\n", top(stack));
 
-	for (int i = 0; i < (int) stack->capacity; i++) {
-		printf("\nPopping stack, ");
-		printf("value: %d", pop(stack));
-	}
+  for (int i = 0; i < (int)stack->capacity; i++) {
+    printf("\nPopping stack, ");
+    printf("value: %d", pop(stack));
+  }
 
-	return 0;
+  return 0;
 }
